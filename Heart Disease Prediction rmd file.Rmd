@@ -1,0 +1,308 @@
+---
+title: "Heart Disease Classification in R"
+author: 'Mitali Patle'
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width=4, fig.height=3,warning = FALSE)
+
+# Include relevant packages here. You may add any extra ones you need.
+require(tidyverse)
+require(GGally)
+require(corrplot)
+require(kableExtra)
+require(caTools)
+require(tree)
+require(ISLR)
+require(gridExtra)
+```
+
+## (a) - Technical report
+
+```{r, include = FALSE}
+# Load in the data set. 
+
+Heart_Disease_Data<-read.csv("HeartDiseaseData.csv")
+
+# converting character variables into factor(categorical) to get a better summary of variables.
+
+#Heart disease
+Heart_Disease_Data$HeartDisease<-as.factor(Heart_Disease_Data$HeartDisease)
+#smoking
+Heart_Disease_Data$Smoking<-as.factor(Heart_Disease_Data$Smoking)
+#AlcoholDrinking
+Heart_Disease_Data$AlcoholDrinking<-as.factor(Heart_Disease_Data$AlcoholDrinking)
+#Stroke
+Heart_Disease_Data$Stroke<-as.factor(Heart_Disease_Data$Stroke)
+#Sex
+Heart_Disease_Data$Sex<-as.factor(Heart_Disease_Data$Sex)
+#AgeCategory 
+Heart_Disease_Data$AgeCategory<-as.factor(Heart_Disease_Data$AgeCategory)
+
+head(Heart_Disease_Data)
+
+summary(Heart_Disease_Data)
+
+dim(Heart_Disease_Data)
+```
+
+## Exploratory analysis
+
+```{r}
+# Creating a summary table for the   HeartDisease variable.
+Heart_Disease_Data %>%
+  count(HeartDisease) %>%
+  mutate(prop=round(prop.table(n),3), pct=round(prop.table(n),3)*100) %>%
+  kable() %>%
+  kable_styling()
+
+```
+An uneven distribution of Class 1(```No```)and Class 2(```Yes```)can be observed.
+Approx. 28% of observations in Class1(```No```) and Approx 72% of observations in class 2(```Yes```).This shows imbalance between the classes which can be handled by logistic regression very well. 
+
+Creating box plots of(quantitative) BMI,PhysicalHealth, MentalHealth ,SleepTime variables by HeartDisease.
+
+## Exploratory plots
+```{r,fig.width=12,fig.height=4,echo=FALSE}
+
+plot1 <- ggplot(data = Heart_Disease_Data,aes(x=HeartDisease,y=BMI))+geom_boxplot()+theme_bw()
+plot2 <- ggplot(data = Heart_Disease_Data,aes(x=HeartDisease,y=PhysicalHealth))+geom_boxplot()+theme_bw()
+plot3 <- ggplot(data = Heart_Disease_Data,aes(x=HeartDisease,y=MentalHealth))+geom_boxplot()+theme_bw() 
+plot4 <- ggplot(data = Heart_Disease_Data,aes(x=HeartDisease,y=SleepTime))+geom_boxplot()+theme_bw()
+grid.arrange(plot1, plot2,plot3,plot4, ncol=4)
+```
+
+The box plots of BMI and SleepTime looks fairly symmetric as the median lie on the middle of the box plots whereas asymmetrical plots can be observed for PhysicalHealth and MentalHealth variable  with the median on the lower end of the box .Numerous outlying values are present on the tails of variables. 
+
+
+Creating summary statistics of each quantitative variable to get a better understanding of the useful predictor of Heart Disease.
+
+```{r, echo=FALSE}
+# BMI
+print("BMI")
+Heart_Disease_Data %>%
+  group_by(HeartDisease) %>%
+  summarise(min=min(BMI), max=max(BMI), Q1=quantile(BMI, 0.25), median=median(BMI), Q3=quantile(BMI,0.75), mean=mean(BMI),sd=sd(BMI)) %>% 
+  kable()%>%
+  kable_styling()
+
+print("PhysicalHealth")
+# PhysicalHealth
+Heart_Disease_Data %>%
+  group_by(HeartDisease) %>%
+  summarise(min=min(PhysicalHealth), max=max(PhysicalHealth), Q1=quantile(PhysicalHealth, 0.25), median=median(PhysicalHealth), Q3=quantile(PhysicalHealth,0.75), mean=mean(PhysicalHealth),sd=sd(PhysicalHealth)) %>% 
+  kable()%>%
+  kable_styling()
+
+print("MentalHealth")
+#MentalHealth
+Heart_Disease_Data %>%
+  group_by(HeartDisease) %>%
+  summarise(min=min(MentalHealth), max=max(MentalHealth), Q1=quantile(MentalHealth, 0.25), median=median(MentalHealth), Q3=quantile(MentalHealth,0.75), mean=mean(MentalHealth),sd=sd(MentalHealth)) %>% 
+  kable()%>%
+  kable_styling()
+
+print("SleepTime")
+#SleepTime
+Heart_Disease_Data %>%
+  group_by(HeartDisease) %>%
+  summarise(min=min(SleepTime), max=max(SleepTime), Q1=quantile(SleepTime, 0.25), median=median(SleepTime), Q3=quantile(SleepTime,0.75), mean=mean(SleepTime),sd=sd(SleepTime))%>% 
+  kable()%>%
+  kable_styling()
+
+```
+From the plots and summary statistics BMI  appears to have the largest difference (difference in medians = 1.64 approx.) between the two classes so might be an important factor to influence HeartDisease.
+
+Creating cross tabulation and bar charts between categorical variables to understand the relationship  between Smoking, AlcoholDrinking, Stroke, Sex, AgeCategory variables by HeartDisease
+
+```{r, echo=FALSE}
+#Smoking
+xtabs(~HeartDisease+Smoking,data = Heart_Disease_Data)
+#AlcoholDrinking
+xtabs(~HeartDisease+AlcoholDrinking,data = Heart_Disease_Data)
+#Stroke
+xtabs(~HeartDisease+Stroke,data = Heart_Disease_Data)
+#Sex
+xtabs(~HeartDisease+Sex,data = Heart_Disease_Data)
+```
+```{r,fig.width=8,fig.height=4, echo=FALSE}
+plot5<-Heart_Disease_Data %>%ggplot(aes(x = Smoking, fill = factor(HeartDisease)))+geom_bar() 
+plot6<-Heart_Disease_Data %>% ggplot(aes(x = AlcoholDrinking, fill= factor(HeartDisease)))+
+geom_bar()
+plot7<-Heart_Disease_Data %>%ggplot(aes(x = Stroke, fill = factor(HeartDisease))) +geom_bar() 
+plot8<-Heart_Disease_Data %>%ggplot(aes(x = Sex, fill = factor(HeartDisease))) +geom_bar()
+grid.arrange(plot5, plot6,plot7,plot8, ncol=2,nrow=2)
+```
+```{r,fig.width=9,fig.height=3,echo=FALSE}
+
+#AgeCategory
+xtabs(~HeartDisease+AgeCategory,data = Heart_Disease_Data)
+
+Heart_Disease_Data %>%
+  ggplot(aes(x = AgeCategory, fill = factor(HeartDisease))) +
+  geom_bar() 
+```
+
+From the above bar charts and cross tabulation the distribution of categorical variables by Heart Disease can be observed.Some of the interesting insights drawn from the data are as follows:
+
+* Large number of people who are not a heavy drinker found to have heart disease as compared to those who are not.
+
+* More number of males have heart disease than number of females.
+But this could still be due to uneven number of males and females or uneven no. of light/heavy drinkers.
+
+* With the increase in the age of a person, the number of cases of having heart disease increased exponentially.
+
+\newpage
+
+## Correlation(to check multicollinearity between variables X's in the data)
+```{r,fig.height=5,fig.width=5 }
+
+ggpairs(data = Heart_Disease_Data %>% dplyr::select(where(is.numeric)), ggplot2::aes(colour=Heart_Disease_Data$HeartDisease),upper = list(continuous = wrap(ggally_cor))) + theme_bw()
+```
+
+Minimal correlation found between quantitative variables which indicates there is little evidence of multi-collinearity between these variables.There can be seen a weak positive correlation between Physical and Mental Health (r=0.344). 
+
+\newpage
+
+## Formal analysis
+
+### (A) Fitting the logistic model
+```{r}
+
+glm.fit = glm(HeartDisease ~ BMI+ PhysicalHealth+MentalHealth +SleepTime+ Smoking + AlcoholDrinking + Stroke + Sex + AgeCategory, data=Heart_Disease_Data, family="binomial")
+
+summary(glm.fit)
+round(exp(cbind(OR = coef(glm.fit), confint(glm.fit))),3)
+```
+From the summary of the model ,it can be seen that all the variable except AgeCategory 25-29 and AgeCategory 30-34 have very small p values that are much less than 0.05 indicating that they are statistically significant.
+
+Sleep Time and being a heavy alcohol drinker (AlchoholDrinkingYes) shows negative coefficient values -0.057 and -0.492 respectively ,indicating increasing sleep time will decrease the chances of person having a heart disease. Similarly,heavy alcohol drinker are less likely to have heart disease than light/non alcoholic drinkers(AlchoholDrinkingNo).i.e, 
+being a heavy drinker lowers the odds of having a heart disease.
+
+BMI,PhysicalHealth,MentalHealth,SmokingYes,StrokeYes,SexMale,all Age Categories(above 34) have positive coefficient indicating higher value of BMI,Higher number of past unhealthy days physically and mentally increases the chance of having a heart disease likewise being smoker, had a stroke before and falling in an age category above 34 increase the chances of having a heart disease.
+
+The confidence intervals for the odds ratios of some variables are reasonably narrow and all contain 1 except Sleep Time [0.903, 0.988]and AlcoholDrinkingYes[0.457,0.819] that shows some evidence of a real association between the SleepTime and AlcoholDrinkingYes variables with (```HeartDisease```) and seems useful factors to determine if a person have a heart disease or not.
+```{r}
+#Confusion matrix and classification rate)
+
+pred.probs = predict(glm.fit, type = "response")
+
+pred.probs[1:12]
+
+pred.class = ifelse(pred.probs > 0.5, "Yes", "No")
+
+table(pred.class, Heart_Disease_Data$HeartDisease)
+
+mean(pred.class ==Heart_Disease_Data$ HeartDisease)
+```
+81% of observations are correctly classified and the training error rate is 19%. The logistic regression model is performing very well but this could be due to the fact that same data used for training and testing.
+
+```{r,include=FALSE}
+#splitting the data into train and test datasets
+set.seed(100)
+split = sample.split(Heart_Disease_Data$HeartDisease, SplitRatio = 0.70)
+train = subset(Heart_Disease_Data, split == TRUE)
+test = subset(Heart_Disease_Data, split == FALSE)
+```
+```{r}
+#Fitting the model with training data(accounting 70% of the total data)
+glm.fit.train<- glm(HeartDisease ~ BMI+ PhysicalHealth+MentalHealth +SleepTime+ Smoking + AlcoholDrinking + Stroke + Sex + AgeCategory, data=train, family="binomial")
+
+summary(glm.fit.train)
+```
+The summary of the model fitted with training data shows the similar statistical significance of variables as shown previously. 
+```{r}
+pred.probs.test = predict(glm.fit.train,test,type = "response")
+
+pred.class.test = ifelse(pred.probs.test > 0.5, "Yes", "No")
+
+mean(pred.class.test ==Heart_Disease_Data$ HeartDisease)
+```
+On Prediction with the test data(accounting 30% of the total data)for the fitted model with train data, classification rate reduced to 66% which is still performing better than random guessing.  
+
+\newpage
+
+### (B) Fitting the Decision Classification Tree model
+```{r,fig.width=6,fig.height=4}
+#model building using training data 
+tree.HeartDisease=tree(HeartDisease~.,data=Heart_Disease_Data)
+summary(tree.HeartDisease)
+
+#plotting the model that is trained using entire HeartDisease data
+plot(tree.HeartDisease)
+text(tree.HeartDisease, pretty = 0)
+title(main = "Decision Tree Classification of entire dataset")
+
+tree.HeartDisease
+
+#model building using training data 
+tree.HeartDisease.train = tree(HeartDisease~.,data=train)
+summary(tree.HeartDisease.train)
+
+#plotting the model that is trained using training data
+plot(tree.HeartDisease.train)
+text(tree.HeartDisease.train, pretty = 0)
+title(main = "Decision Tree Classification")
+```
+
+The plots of complete data and training data shows how Decision Tree classification is sensitive towards change in data.For example-The branching criteria changes for PhysicalHealth from 7.5(Complete data) to 8.5(Training Data).    
+```{r}
+#prediction using train data
+tree.HeartDisease.pred.train=predict(tree.HeartDisease.train,train,type="class")
+cat("Training data classification rate=",mean(train$HeartDisease ==tree.HeartDisease.pred.train))
+
+#prediction using test data
+tree.HeartDisease.pred=predict(tree.HeartDisease.train,test,type="class")
+cat("\nTesting  data classification rate=",mean(test$HeartDisease ==tree.HeartDisease.pred))
+```
+```{r, include=FALSE}
+#cross tabulation of complete and test data by Heart Disease
+table(predicted = tree.HeartDisease.pred.train, actual = train$HeartDisease)
+table(predicted = tree.HeartDisease.pred, actual = test$HeartDisease)
+```
+Training error rate is 21%.Classification rate was found to be:
+Training data classification rate= 0.7933579(79.3%)
+Testing data classification rate = 0.7933579(79.3%).
+The results are much better than random guessing.
+
+## Conclusions
+On fitting the model using Logistic regression and Decision Tree classification,the classification rate obtained are approximately 66% and 79% respectively.This shows that Decision Tree classification model is performing better than logistic regression model on test data.
+
+The graphical representation of the tree model was easier to interpret as compared to coefficients or log odds obtained from logistic regression.
+
+The Useful predictors to determine presence or absence of Heart Disease differs in both the methods undertaken during formal Analysis.Logistic regression showed a confidence interval that do not contain 1 in it for variables SleepTime and AlcoholDrinkingYes indicating good predictors whereas the Decision tree method was able to differentiate AgeCategory 18-24,25-29,30-34,35-39,40-44,45-49 from the remaining indicating usefulness of the predictor. 
+
+
+
+
+
+
+## (b) - Non-technical report
+
+Two Classification approaches are used to determine the factors that influence whether a person has heart disease or not.
+
+A)In the Logistic regression approach, all factors except for people who belong to the age group 25 to 34 were found to be useful. On further analysis, these factors narrowed down to the 2 most important ones i.e, Sleeping Hours and a person being a heavy drinker that indicates that increasing the number of hours of sleep reduces the chance of having heart disease likewise a heavy alcohol drinker has fewer chances of having heart disease.
+
+The prediction model built through the logistic method was found to have an accuracy of 81% which tells us we are 81% sure that the prediction made about having heart disease or not is true but this accuracy was achieved because the same data was used for the prediction which was used to build the model as well but in reality, new data is always unseen.
+
+Thus data were divided into 2 parts known as training data and testing data. Again a new model was built using training data and the unseen testing data is used to measure the accuracy of the model which was found to be 66% but is still better than random guessing.
+
+
+B).In the Decision Tree Classification approach, a model similar to logistic regression was built but using the tree approach. In summarizing the model, the misclassification error rate was found to be 21%. i.e the proportion of data that was incorrectly classified into another class. For example, the data which was supposed to be allocated to(```yes```) was mistakenly classified into (```No```) and vice versa.
+
+```{r,fig.width=5,fig.height=4,echo=FALSE}
+plot(tree.HeartDisease.train)
+text(tree.HeartDisease.train, pretty = 0)
+title(main = "Decision Tree Classification")
+
+```
+
+The most important factor to determine if a person has heart disease or not appears to be Age Category, since the first branch differentiates AgeCategory 18 to 49 years from the rest of the Age Group factors.
+The same training and testing data that were used previously were utilized to check the prediction accuracy of this model where training data is used in building the model and testing data to find the accuracy which was found to be approximately 79%.
+
+Both the analysis approach performed better than average or a random guess but it can be clearly seen that the Decision tree has out-performed the logistic regression function when the unseen data was used to do the prediction of Heart Disease in a person. 
+
+
