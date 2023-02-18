@@ -1,3 +1,6 @@
+<!-- Place this tag where you want the button to render. -->
+<a class="github-button" href="https://mitalipatle.github.io/Heart-Disease-Classification-using-R/" data-icon="octicon-play" aria-label="Use this GitHub Action buttons/github-buttons on GitHub">Project Link</a>
+
 # Heart-Disease-Classification-using-R
 ## Introduction:
 Heart disease is a prevalent health concern that affects millions of people globally. Given the rise of various risk factors such as unhealthy lifestyles, alcohol consumption, and physical inactivity, it is imperative to identify those who are at high risk of developing heart diseases. According to the World Health Organization(WHO), cardiovascular diseases are responsible for an estimated 17.9 million deaths annually, making it the leading cause of mortality worldwide. To combat this problem, this project aims to develop a classification model for heart disease using R programming. The primary objective of this project is to identify individuals at high risk of heart disease and to provide valuable insights and a better understanding of the risk factors associated with heart disease to prevent premature mortality. By leveraging advanced statistical techniques and machine learning algorithms, this project aims to make significant contributions to the prevention of heart-related health issues.
@@ -29,3 +32,5 @@ The following is a description of a subset of the collected data:
 &ensp;&ensp;&ensp;&ensp; 1.2.2). Decision Classification Tree model
 #### &ensp; 1.3). Conclusions
 ### 2). Non-technical Report
+
+### <a href="https://mitalipatle.github.io/Heart-Disease-Classification-using-R/" target="_blank">Link to Project</a>
